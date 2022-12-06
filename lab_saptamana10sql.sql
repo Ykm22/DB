@@ -33,7 +33,7 @@ BEGIN
 	VALUES (@test_description, @time_start);
 
 	DECLARE @testRunId INT;
-	SELECT @testRunId = TestRunID FROM TestRuns WHERE Description = @test_description;
+	SELECT @testRunId = TestRunID FROM TestRuns WHERE Description = @test_description AND StartAt = @time_start;
 
 	EXEC deleteTest @test_nr, @testRunId
 	EXEC insertTest @test_nr, @testRunId
@@ -44,10 +44,24 @@ BEGIN
 	WHERE TestRunID = @testRunId
 END
 
+
 exec runTest 1
+
 select * from TestRuns
 select * from TestRunTables
 select * from TestRunViews
+
+delete from TestRuns
+delete from TestRunTables
+delete from TestRunViews
+
+select * from muncitori
+select * from magazin
+select * from animale
+
+delete from muncitori
+delete from magazin
+delete from animale
 
 ALTER PROCEDURE deleteTest @test_nr INT, @testRunId INT AS
 BEGIN 
@@ -61,10 +75,12 @@ BEGIN
 	FETCH NEXT FROM cursorDeleteTest INTO @tableID, @NoOfRows;
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
-		INSERT INTO TestRunTables (TestRunID, TableID, StartAt, EndAt)
-		VALUES (@testRunId, @tableID, GETDATE(), GETDATE())
+		--INSERT INTO TestRunTables (TestRunID, TableID, StartAt, EndAt)
+		--VALUES (@testRunId, @tableID, GETDATE(), GETDATE())
 		
+
 		EXEC deleteEntries @tableID
+
 		FETCH NEXT FROM cursorDeleteTest INTO @tableID, @NoOfRows;
 
 	END
@@ -72,6 +88,7 @@ BEGIN
 	DEALLOCATE cursorDeleteTest;
 END
 	
+
 ALTER PROCEDURE insertTest @test_nr INT, @testRunId INT AS
 BEGIN
 	SET NOCOUNT ON
@@ -81,22 +98,33 @@ BEGIN
 
 	DECLARE @tableID INT, @NoOfRows INT;
 	FETCH NEXT FROM cursorInsertTest INTO @tableID, @NoOfRows;
+	DECLARE @my_start DATETIME;
+	
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
 
+		SET @my_start = SYSDATETIME()
+
 		EXEC insertEntries @tableID, @NoOfRows
+		
+
+		INSERT INTO TestRunTables (TestRunID, TableID, StartAt, EndAt)
+		VALUES (@testRunId, @tableID, @my_start, GETDATE())
+
 		FETCH NEXT FROM cursorInsertTest INTO @tableID, @NoOfRows;
-
-		UPDATE TestRunTables
-		SET EndAt = GETDATE()
-		WHERE TestRunID = @testRunId AND TableID = @tableID
-
+		--update TestRunTables
+		--set StartAt = @start
+		--where TestRunID = @testRunId
+		
+		--update TestRunTables
+		--set EndAt = GETDATE()
+		--where TestRunID = @testRunId
 	END
 	CLOSE cursorInsertTest;
 	DEALLOCATE cursorInsertTest;
 END
 
-CREATE PROCEDURE viewsTest @test_nr INT, @testRunId INT AS
+ALTER PROCEDURE viewsTest @test_nr INT, @testRunId INT AS
 BEGIN
 	SET NOCOUNT ON
 	DECLARE cursorViewsTest CURSOR FAST_FORWARD FOR
@@ -106,10 +134,10 @@ BEGIN
 
 	DECLARE @view_ID INT;
 	FETCH NEXT FROM cursorViewsTest INTO @view_ID
-	DECLARE @start_view_time VARCHAR(100)
+	DECLARE @start_view_time DATETIME;
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
-		SET @start_view_time = GETDATE()
+		SET @start_view_time = SYSDATETIME()
 
 		EXEC callView @view_ID
 
@@ -152,6 +180,7 @@ BEGIN
 	SET NOCOUNT ON
 	DECLARE @table_name VARCHAR(30)
 	SELECT @table_name = name FROM Tables WHERE TableID = @tableID
+
 	IF @table_name = 'Magazin'
 		EXEC insertMagazin @NoOfRows
 	IF @table_name = 'Animale'
@@ -239,3 +268,22 @@ SELECT ingrijitori_amount = COUNT(*), salariu = i.salariu_i FROM Ingrijitori i
 INNER JOIN SpatiiDeAnimale Sp ON i.cod_spatiu = Sp.cod_spatiu
 GROUP BY salariu_i
 
+select * from testtables
+select * from tables
+
+update testtables
+set NoOfRows = 250
+WHERE TableId = 4
+
+
+drop table Muncitori
+create table Muncitori(
+	cod_m INT IDENTITY,
+	cnp_m VARCHAR(100),
+	nume_m VARCHAR(100),
+	salariu_m INT,
+	ore_m INT,
+	cod_s INT,
+	PRIMARY  KEY (cod_m, cnp_m),
+	FOREIGN KEY (cod_s) REFERENCES StatiiDeProcesare(cod_s)
+)
