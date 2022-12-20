@@ -27,10 +27,10 @@ begin
 	return 1;
 end
 
-create procedure readMateriiPrimeDupaAnimal @cod_a int as
+alter procedure readMateriiPrimeDupaAnimal @cod_a int as
 begin
 	set nocount on;
-	select MateriePrima = nume_mp from MateriiPrime where cod_a = @cod_a
+	select cod_mp, MateriePrima = nume_mp from MateriiPrime where cod_a = @cod_a
 end
 
 create procedure updateNumeMateriePrima @cod_mp int, @nume_nou varchar(100) as
@@ -50,12 +50,14 @@ end
 
 select * from MateriiPrime
 
-exec addMateriePrima 'ceva_nou', 21909
-exec readMateriiPrimeDupaAnimal 21909
-exec updateNumeMateriePrima 22, 'ceva_nou'
-exec deleteMateriePrima 26
+exec readMateriiPrimeDupaAnimal 21904
+exec deleteMateriePrima 39
+exec addMateriePrima 'oua', 21904
+exec updateNumeMateriePrima 40, 'pene'
 
-create index IX_MateriiPrime_numeMP_asc_codA_asc on MateriiPrime (nume_mp ASC, cod_a ASC);
+
+create index IX_MateriiPrime_numeMP_asc on MateriiPrime (nume_mp ASC, cod_a ASC);
+drop index IX_MateriiPrime_numeMP_asc ON MateriiPrime
 ----------------------------------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------------------------------------
@@ -101,12 +103,11 @@ begin
 end
 
 select * from StatiiDeProcesare
-exec addStatieDeProcesare 'Care proceseaza oua'
 exec readStatiiDeProcesareDupaTip 'Care proceseaza carne'
-exec updateStatieDeProcesare 6, 'Care proceseaza oua'
-exec deleteStatieDeProcesare 6
+exec deleteStatieDeProcesare 19
+exec addStatieDeProcesare 'Care proceseaza carne'
+exec updateStatieDeProcesare 20, 'Care proceseaza oua'
 
-create index IX_StatiiDeProcesare_codA_asc_tipS_asc ON StatiiDeProcesare (cod_s ASC, tip_s ASC);
 
 select * from StatiiDeProcesare
 select * from StatiiMaterii
@@ -119,14 +120,18 @@ select * from MateriiPrime
 
 select * from StatiiMaterii
 
-create procedure addStatiiMaterii @cod_s int, @cod_mp int as
+alter procedure addStatiiMaterii @cod_s int, @cod_mp int as
 begin
 	set nocount on;
 	if (dbo.validateStatiiMaterii(@cod_s, @cod_mp) = 0)
-		throw 50005, 'Statie sau materie prima neinregistrata', 1;
+		throw 50005, 'Statie sau materie prima invalida', 1;
 	else
 		insert into StatiiMaterii (cod_s, cod_mp) values (@cod_s, @cod_mp);
 end
+select * from StatiiDeProcesare order by tip_s
+select * from StatiiMaterii
+select * from MateriiPrime
+
 
 create function validateStatiiMaterii (@cod_s int, @cod_mp int) returns bit as
 begin
@@ -141,6 +146,7 @@ create procedure readStatiiMaterii_byStatii @cod_s int as
 begin
 	select * from StatiiMaterii where cod_s = @cod_s;
 end
+
 
 create procedure updateStatiiMaterii_materie_byStatie @cod_s int, @cod_mp_vechi int, @cod_mp_nou int as
 begin
@@ -157,28 +163,40 @@ begin
 	where cod_s = @cod_s and cod_mp = @cod_mp;
 end
 
+select * from StatiiDeProcesare
+select * from MateriiPrime
 select * from StatiiMaterii
+exec addStatiiMaterii 19, 100
+exec readStatiiMaterii_byStatii 20
+exec addStatiiMaterii 20, 27
+exec updateStatiiMaterii_materie_byStatie 20, 27, 28  
+exec deleteStatiiMaterii 20, 28
 
-create index IX_StatiiMaterii_codS_asc_codMP_asc ON StatiiMaterii (cod_s ASC, cod_mp ASC);
+--create index IX_StatiiMaterii_codS_asc_codMP_asc ON StatiiMaterii (cod_s ASC, cod_mp ASC);
 
 -----------------------------------------------------------------------------------------------------------------------------------
-create view vw_StatiiDeProcesare as
-	select * from StatiiDeProcesare
-select * from vw_StatiiDeProcesare
+alter view vw_StatiiDeProcesare_deCarne as
+	select cod_s from StatiiDeProcesare where tip_s = 'Care proceseaza carne'
+select * from vw_StatiiDeProcesare_deCarne
+
+create index ix_StatiiDeProcesare_tipS_asc ON StatiiDeProcesare(tip_s ASC)
+--drop index ix_StatiiDeProcesare_tipS_asc ON StatiiDeProcesare
+
+select * from StatiiDeProcesare
 
 alter view vw_StatiiDeProcesare_Active as
-	select distinct s.cod_s, s.tip_s from StatiiDeProcesare s
-	inner join StatiiMaterii sm on sm.cod_s = s.cod_s
+	select distinct sm.cod_s, s.tip_s from StatiiMaterii sm
+	INNER JOIN StatiiDeProcesare s ON sm.cod_s = s.cod_s
 
 select * from StatiiMaterii
 select * from vw_StatiiDeProcesare_Active
 
 alter view vw_MateriiPrime_Oua as
-	select * from MateriiPrime where nume_mp = 'oua'
+	select cod_mp, cod_a from MateriiPrime where nume_mp = 'oua'
 select * from vw_MateriiPrime_Oua
 
 select * from materiiprime
-select * from StatiiMaterii
+--select * from StatiiMaterii
 select * from StatiiDeProcesare
 
 select * from materiiprime
@@ -225,6 +243,12 @@ insert into StatiiMaterii (cod_s, cod_mp) values
 (1, 22), (1, 23), (1, 24), (1, 25), 
 (2, 26), (2, 27), (2, 28), (2, 29),
 (4, 30), (4, 31), (2, 32)
+insert into MateriiPrime (nume_mp, cod_a) values
+('pene', 21903), ('pene', 21904)
+insert into StatiiMaterii (cod_s, cod_mp) values
+(3, 36), (5, 37)
+select * from MateriiPrime
+select * from StatiiDeProcesare
 
 
 
